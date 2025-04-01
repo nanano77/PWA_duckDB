@@ -6,11 +6,12 @@
   <meta name="theme-color" content="#000000" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon-192.png" />
-  <title>DuckDB Frontend PWA</title>
+  <title>DuckDB 前端查詢工具</title>
   <style>
     body { font-family: sans-serif; padding: 1rem; background: #f9f9f9; }
     textarea { width: 100%; height: 100px; margin-top: 1rem; }
-    pre { background: #eee; padding: 1rem; overflow-x: auto; }
+    pre { background: #eee; padding: 1rem; overflow-x: auto; white-space: pre-wrap; }
+    button { padding: 0.5rem 1rem; margin-top: 0.5rem; }
   </style>
 </head>
 <body>
@@ -23,26 +24,29 @@
   <script type="module">
     import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm";
 
-    const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
-    const worker = new Worker(JSDELIVR_BUNDLES.mainWorker);
+    const bundles = duckdb.getBundledBundles(); // ✅ 使用 bundled 模式，不會出錯
     const logger = new duckdb.ConsoleLogger();
+    const worker = new Worker(bundles.mainWorker);
     const db = new duckdb.AsyncDuckDB(logger, worker);
 
-    await db.instantiate(JSDELIVR_BUNDLES.mainModule, JSDELIVR_BUNDLES.pthreadWorker);
+    await db.instantiate(bundles.mainModule, bundles.pthreadWorker);
     const conn = await db.connect();
 
+    // 建立測試資料表
     await conn.query(`
       CREATE TABLE test (id INTEGER, name TEXT);
       INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol');
     `);
 
+    // 綁定按鈕事件
     document.getElementById("runBtn").addEventListener("click", async () => {
       const sql = document.getElementById("sql").value;
+      const resultBox = document.getElementById("result");
       try {
         const result = await conn.query(sql);
-        document.getElementById("result").textContent = JSON.stringify(result.toArray(), null, 2);
-      } catch (e) {
-        document.getElementById("result").textContent = "❌ 查詢錯誤：" + e;
+        resultBox.textContent = JSON.stringify(result.toArray(), null, 2);
+      } catch (err) {
+        resultBox.textContent = "❌ 查詢錯誤：\\n" + err;
       }
     });
   </script>
