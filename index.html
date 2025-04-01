@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icon-192.png" />
+  <title>DuckDB Frontend PWA</title>
+  <style>
+    body { font-family: sans-serif; padding: 1rem; background: #f9f9f9; }
+    textarea { width: 100%; height: 100px; }
+    pre { background: #eee; padding: 1rem; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h1>🦆 DuckDB 前端 PWA</h1>
+  <p>輸入 SQL 查詢：</p>
+  <textarea id="sql">SELECT * FROM test;</textarea>
+  <br />
+  <button onclick="runQuery()">執行查詢</button>
+  <pre id="result">查詢結果會顯示在這裡...</pre>
+
+  <script type="module">
+    import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm";
+
+    const JSDELIVR_BUNDLES = duckdb.getJsDelivrBundles();
+    const worker = new Worker(JSDELIVR_BUNDLES.mainWorker);
+    const logger = new duckdb.ConsoleLogger();
+    const db = new duckdb.AsyncDuckDB(logger, worker);
+
+    await db.instantiate(JSDELIVR_BUNDLES.mainModule, JSDELIVR_BUNDLES.pthreadWorker);
+    const conn = await db.connect();
+
+    await conn.query(\`
+      CREATE TABLE test (id INTEGER, name TEXT);
+      INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol');
+    \`);
+
+    window.runQuery = async () => {
+      const sql = document.getElementById("sql").value;
+      try {
+        const result = await conn.query(sql);
+        document.getElementById("result").textContent = JSON.stringify(result.toArray(), null, 2);
+      } catch (e) {
+        document.getElementById("result").textContent = "❌ 查詢錯誤：" + e;
+      }
+    };
+  </script>
+</body>
+</html>
