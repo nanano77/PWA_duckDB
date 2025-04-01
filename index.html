@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#000000" />
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" href="icon-192.png" />
-  <title>DuckDB 前端查詢工具</title>
+  <title>DuckDB Frontend</title>
   <style>
     body { font-family: sans-serif; padding: 1rem; background: #f9f9f9; }
     textarea { width: 100%; height: 100px; margin-top: 1rem; }
@@ -15,8 +15,7 @@
   </style>
 </head>
 <body>
-  <h1>🦆 DuckDB 前端 PWA</h1>
-  <p>輸入 SQL 查詢：</p>
+  <h1>🦆 DuckDB 前端查詢</h1>
   <textarea id="sql">SELECT * FROM test;</textarea><br />
   <button id="runBtn">執行查詢</button>
   <pre id="result">查詢結果會顯示在這裡...</pre>
@@ -24,21 +23,22 @@
   <script type="module">
     import * as duckdb from "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/+esm";
 
-    const bundles = duckdb.getBundledBundles(); // ✅ 使用 bundled 模式，不會出錯
+    const workerURL = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/dist/duckdb-browser-eh.worker.js";
+    const mainModule = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/dist/duckdb-wasm-eh.wasm";
+    const pthreadWorker = "https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@1.28.0/dist/duckdb-browser-eh.pthread.worker.js";
+
     const logger = new duckdb.ConsoleLogger();
-    const worker = new Worker(bundles.mainWorker);
+    const worker = new Worker(workerURL, { type: "module" });
     const db = new duckdb.AsyncDuckDB(logger, worker);
 
-    await db.instantiate(bundles.mainModule, bundles.pthreadWorker);
+    await db.instantiate(mainModule, pthreadWorker);
     const conn = await db.connect();
 
-    // 建立測試資料表
     await conn.query(`
       CREATE TABLE test (id INTEGER, name TEXT);
       INSERT INTO test VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Carol');
     `);
 
-    // 綁定按鈕事件
     document.getElementById("runBtn").addEventListener("click", async () => {
       const sql = document.getElementById("sql").value;
       const resultBox = document.getElementById("result");
